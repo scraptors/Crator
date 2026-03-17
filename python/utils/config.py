@@ -2,9 +2,6 @@ import yaml
 import os
 from pathlib import Path
 
-resource_path = Path(__file__).parent.parent.parent.joinpath("resources")
-
-
 class Configuration:
     _instance = None
 
@@ -16,7 +13,7 @@ class Configuration:
     def __init__(self, yml_path=None):
         self.crator_path = yml_path
         if not self.crator_path:
-            self.crator_path = os.path.join(resource_path, 'crator.yml')
+            self.crator_path = os.path.join(os.getcwd(), 'resources', 'crator.yml')
 
         if not os.path.isfile(self.crator_path):
             raise FileNotFoundError(f"Invalid path: '{self.crator_path}' does not exist.")
