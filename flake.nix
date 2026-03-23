@@ -117,6 +117,7 @@
       packages = {
         default = crator;
         crator = crator;
+        crator-wrapped = cratorWrapper;
       };
 
       apps = {
