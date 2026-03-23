@@ -22,6 +22,10 @@
           inherit pname version;
           sha256 = "sha256-tkHvOiOC4QHTxOZklNpvxSuCwyXdBK40HgUbDuxvMM0=";
         };
+
+        pyproject = true;
+        build-system = [pkgs.python3Packages.setuptools];
+
         doCheck = false;
       };
 
