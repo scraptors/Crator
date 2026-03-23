@@ -121,7 +121,8 @@
 
       apps = {
         default = flake-utils.lib.mkApp {drv = crator;};
-        crator = flake-utils.lib.mkApp {drv = cratorWrapper;};
+        crator = flake-utils.lib.mkApp {drv = crator;};
+        crator-wrapper = flake-utils.lib.mkApp {drv = cratorWrapper;};
       };
 
       devShells.default = pkgs.mkShell {
