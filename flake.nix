@@ -1,77 +1,66 @@
-{
-  description = "Crator - Dark Web Crawler";
-
+{  
+  description = "A flake for managing Crator with a CLI wrapper";
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
-    utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs";
   };
+  outputs = { self, nixpkgs }: {
+    packages.x86_64-linux.crator = nixpkgs.legacyPackages.x86_64-linux.mkDerivation {  
+      pname = "crator";
+      version = "1.0.0";
+      src = ./.;
+      nativeBuildInputs = [ pkgs.coreutils pkgs.gawk pkgs.gnused ];
+      buildInputs = [ pkgs.yq-go ];
+      installPhase = ''
+          mkdir -p $out/bin
+          cp -R ${src}/bin/crator $out/bin/
+      '';  
+    };
 
-  outputs = {
-    nixpkgs,
-    utils,
-    ...
-  }:
-    utils.lib.eachDefaultSystem (system: let
-      pkgs = import nixpkgs {inherit system;};
+    apps.default = {  
+      type = "app";
+      program = "${self.packages.x86_64-linux.crator}/bin/crator";
+    };
 
-      waiting = pkgs.python3Packages.buildPythonPackage rec {
-        pname = "waiting";
-        version = "1.4.1";
+    # New CLI Wrapper
+    apps.crator = {  
+      type = "app";
+      program = ''
+        pkgs.writeShellApplication {  
+          name = "crator";
+          runtimeInputs = [ pkgs.coreutils pkgs.gnused pkgs.gawk pkgs.yq-go ];
 
-        src = pkgs.fetchPypi {
-          inherit pname version;
-          sha256 = "sha256-tkHvOiOC4QHTxOZklNpvxSuCwyXdBK40HgUbDuxvMM0="; # replace with real hash on first build
+          # Define arguments
+          args = ''
+            --seed-url=
+            --depth=
+            --data-dir=
+            --http-proxy=
+          '';
+
+          script = ''
+            #!/bin/sh
+            set -e
+
+            # Create temporary working directory
+            temp_dir=$(mktemp -d)
+            mkdir -p "$temp_dir/resources"
+
+            # Copy resources
+            cp resources/seeds.txt "$temp_dir/resources/"
+            cp resources/crator.yml "$temp_dir/resources/"
+
+            # Modify the YAML configurations based on CLI arguments
+            sed -i "s|^crawler.depth: .*|crawler.depth: ${depth}|' "$temp_dir/resources/crator.yml"
+            sed -i "s|^data_directory: .*|data_directory: ${data_dir}|' "$temp_dir/resources/crator.yml"
+            sed -i "s|^http_proxy: .*|http_proxy: ${http_proxy}|' "$temp_dir/resources/crator.yml"
+            echo "${seed_url}" > "$temp_dir/resources/seeds.txt"
+
+            # Execute crator binary
+            cd "$temp_dir"
+            ${self.packages.x86_64-linux.crator}/bin/crator
+          '';
         };
-
-        doCheck = false;
-      };
-
-      pythonEnv = pkgs.python3.withPackages (ps:
-        with ps; [
-          requests
-          pysocks
-          beautifulsoup4
-          pyyaml
-          lxml
-          fake-useragent
-          stem
-          urllib3
-          waiting
-        ]);
-
-      crator = pkgs.stdenv.mkDerivation {
-        pname = "crator";
-        version = "0.1.0";
-
-        src = ./.;
-
-        nativeBuildInputs = [pkgs.makeWrapper];
-        buildInputs = [pythonEnv];
-
-        installPhase = ''
-          mkdir -p $out/bin $out/share/crator
-          cp -r python/* $out/share/crator/
-          makeWrapper ${pythonEnv}/bin/python3 $out/bin/crator \
-            --add-flags "$out/share/crator/crator.py"
-        '';
-
-        meta = {
-          description = "A Python-based Tor hidden service crawler";
-          mainProgram = "crator";
-        };
-      };
-    in {
-      packages = {
-        inherit crator;
-        default = crator;
-      };
-
-      apps.default = utils.lib.mkApp {
-        drv = crator;
-      };
-
-      devShells.default = pkgs.mkShell {
-        packages = [pythonEnv pkgs.tor];
-      };
-    });
+      '';
+    };
+  }
 }
